@@ -1480,6 +1480,32 @@ module.exports = function register(socket, ctx) {
       }
 
       io.to(`channel:${code}`).emit('new-message', { channelCode: code, message });
+
+      // Delivery receipts: in a DM, "delivered" means a recipient
+      // socket sits in the channel room and so received the new-message
+      // above. Every open socket of the sender gets it (multi-device).
+      // Not for group channels: with many recipients a single checkmark
+      // would overstate delivery, so non-DM channels stay delivered-less.
+      if (channel.is_dm) {
+        const dmRoom = io.of('/').adapter.rooms.get(`channel:${code}`);
+        const dmRecipientIds = db.prepare(
+          'SELECT user_id FROM channel_members WHERE channel_id = ? AND user_id != ?'
+        ).all(channel.id, socket.user.id).map(r => r.user_id);
+        if (dmRoom && dmRecipientIds.length) {
+          let anyRecipientOnline = false;
+          for (const sid of dmRoom) {
+            const s = io.of('/').sockets.get(sid);
+            if (s && s.user && dmRecipientIds.includes(s.user.id)) { anyRecipientOnline = true; break; }
+          }
+          if (anyRecipientOnline) {
+            for (const [, s] of io.of('/').sockets) {
+              if (s.user && s.user.id === socket.user.id) {
+                s.emit('message-delivered', { channelCode: code, messageId: result.lastInsertRowid });
+              }
+            }
+          }
+        }
+      }
       // Burn messages must not reveal their content in push notifications —
       // the whole point is that the recipient has to actively reveal them.
       // A self-destructing message is kept out of push for the same reason: a
@@ -2627,18 +2653,50 @@ module.exports = function register(socket, ctx) {
     if (!code || !/^[a-f0-9]{8}$/i.test(code)) return;
     if (!isInt(data.messageId) || data.messageId <= 0) return;
 
-    const channel = db.prepare('SELECT id FROM channels WHERE code = ?').get(code);
+    const channel = db.prepare('SELECT id, is_dm FROM channels WHERE code = ?').get(code);
     if (!channel) return;
 
     const member = db.prepare('SELECT 1 FROM channel_members WHERE channel_id = ? AND user_id = ?').get(channel.id, socket.user.id);
     if (!member) return;
 
     try {
+      // Read receipts: in a DM, learn where this reader's marker stood
+      // BEFORE the upsert, so the span newly cleared can be notified to its
+      // authors. Repeated mark-reads with the same or an older id change
+      // nothing, so no receipts re-fire. DM-only: in a group channel one
+      // member reading would mark the sender's message "Read" for everyone.
+      let dmReceipts = null;
+      if (channel.is_dm) {
+        const prevRead = db.prepare(
+          'SELECT last_read_message_id FROM read_positions WHERE user_id = ? AND channel_id = ?'
+        ).get(socket.user.id, channel.id)?.last_read_message_id || 0;
+        if (data.messageId > prevRead) {
+          dmReceipts = db.prepare(`
+            SELECT id, user_id FROM messages
+            WHERE channel_id = ? AND thread_id IS NULL
+              AND id > ? AND id <= ? AND user_id != ?
+            ORDER BY id DESC LIMIT 50
+          `).all(channel.id, prevRead, data.messageId, socket.user.id);
+        }
+      }
+
       db.prepare(`
         INSERT INTO read_positions (user_id, channel_id, last_read_message_id)
         VALUES (?, ?, ?)
         ON CONFLICT(user_id, channel_id) DO UPDATE SET last_read_message_id = MAX(last_read_message_id, excluded.last_read_message_id)
       `).run(socket.user.id, channel.id, data.messageId);
+
+      if (dmReceipts && dmReceipts.length) {
+        // One event per newly-read message, to every socket the author has
+        // open. The reader's id rides along so the sender can attribute.
+        for (const r of dmReceipts) {
+          for (const [, s] of io.of('/').sockets) {
+            if (s.user && s.user.id === r.user_id) {
+              s.emit('message-read', { channelCode: code, messageId: r.id, user_id: socket.user.id });
+            }
+          }
+        }
+      }
     } catch (err) {
       console.error('Mark read error:', err);
     }
