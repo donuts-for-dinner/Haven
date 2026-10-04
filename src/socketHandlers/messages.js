@@ -2152,13 +2152,19 @@ module.exports = function register(socket, ctx) {
     if (!data || typeof data !== 'object') return;
     if (!isInt(data.messageId)) return;
 
-    const pinCode = socket.currentChannel;
+    // Allow the client to name the target channel explicitly, as delete-message
+    // already does. Without this the lookup resolves against socket.currentChannel,
+    // which is only correct when the socket happens to be sitting in the message's
+    // own channel; pinning while another channel is active would fail to find the
+    // message, or check permission against the wrong channel entirely.
+    const rawPinCode = typeof data.channelCode === 'string' ? data.channelCode.trim() : null;
+    const pinCode = (rawPinCode && /^[a-f0-9]{8}$/i.test(rawPinCode)) ? rawPinCode : socket.currentChannel;
     const pinCh = pinCode ? db.prepare('SELECT id FROM channels WHERE code = ?').get(pinCode) : null;
     if (!socket.user.isAdmin && !userHasPermission(socket.user.id, 'pin_message', pinCh ? pinCh.id : null)) {
       return socket.emit('error-msg', 'You don\'t have permission to pin messages');
     }
 
-    const code = socket.currentChannel;
+    const code = pinCode;
     if (!code) return;
 
     const channel = db.prepare('SELECT id FROM channels WHERE code = ?').get(code);
@@ -2207,13 +2213,15 @@ module.exports = function register(socket, ctx) {
     if (!data || typeof data !== 'object') return;
     if (!isInt(data.messageId)) return;
 
-    const unpinCode = socket.currentChannel;
+    // Same explicit-channel resolution as pin-message above.
+    const rawUnpinCode = typeof data.channelCode === 'string' ? data.channelCode.trim() : null;
+    const unpinCode = (rawUnpinCode && /^[a-f0-9]{8}$/i.test(rawUnpinCode)) ? rawUnpinCode : socket.currentChannel;
     const unpinCh = unpinCode ? db.prepare('SELECT id FROM channels WHERE code = ?').get(unpinCode) : null;
     if (!socket.user.isAdmin && !userHasPermission(socket.user.id, 'pin_message', unpinCh ? unpinCh.id : null)) {
       return socket.emit('error-msg', 'You don\'t have permission to unpin messages');
     }
 
-    const code = socket.currentChannel;
+    const code = unpinCode;
     if (!code) return;
 
     const channel = db.prepare('SELECT id FROM channels WHERE code = ?').get(code);
