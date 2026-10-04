@@ -181,9 +181,11 @@ _bindThreadAndDmPanels() {
         } else if (action === 'unpin') {
           this.socket.emit('unpin-message', { messageId: msgId, channelCode: this._activeDMPip });
         } else if (action === 'archive') {
-          this.socket.emit('archive-message', { messageId: msgId });
+          // Server honours channelCode for archive as of de3d7f4; same
+          // wrong-channel defect as pin had, same fix.
+          this.socket.emit('archive-message', { messageId: msgId, channelCode: this._activeDMPip });
         } else if (action === 'unarchive') {
-          this.socket.emit('unarchive-message', { messageId: msgId });
+          this.socket.emit('unarchive-message', { messageId: msgId, channelCode: this._activeDMPip });
         } else if (action === 'copy-link') {
           this._copyChannelLink?.(this._activeDMPip, msgId);
         } else if (action === 'thread') {
