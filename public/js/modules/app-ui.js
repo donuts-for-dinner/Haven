@@ -119,7 +119,11 @@ _bindSearchAndPins() {
         const msgId = parseInt(unpinBtn.dataset.msgId, 10);
         if (!msgId) return;
         const ok = await this._showConfirmModal?.(t('confirm.unpin_message'), '');
-        if (ok) this.socket.emit('unpin-message', { messageId: msgId });
+        // The pins PiP survives a channel switch (only its own close/pop-in
+        // calls _closePinsPiP), so _pinsPipChannelCode can differ from
+        // currentChannel. Send it explicitly rather than letting the server
+        // fall back to the wrong channel.
+        if (ok) this.socket.emit('unpin-message', { messageId: msgId, channelCode: this._pinsPipChannelCode });
         return;
       }
       // Click anywhere else on a pinned item → jump to that message in the channel

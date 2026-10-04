@@ -174,10 +174,12 @@ _bindThreadAndDmPanels() {
           }
         } else if (action === 'pin') {
           if (await this._showConfirmModal(t('confirm.pin_message'), '')) {
-            this.socket.emit('pin-message', { messageId: msgId });
+            // channelCode must come from the PiP, not the server's currentChannel
+            // fallback: the main pane may be showing a different channel.
+            this.socket.emit('pin-message', { messageId: msgId, channelCode: this._activeDMPip });
           }
         } else if (action === 'unpin') {
-          this.socket.emit('unpin-message', { messageId: msgId });
+          this.socket.emit('unpin-message', { messageId: msgId, channelCode: this._activeDMPip });
         } else if (action === 'archive') {
           this.socket.emit('archive-message', { messageId: msgId });
         } else if (action === 'unarchive') {
