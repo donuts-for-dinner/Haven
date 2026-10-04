@@ -38,7 +38,7 @@ export default {
   // ═══════════════════════════════════════════════════════
   _roleTemplates() {
     const own = ['edit_own_messages', 'delete_own_messages'];
-    const member = [...own, 'upload_files', 'use_voice', 'use_tts', 'view_history', 'view_channel_members'];
+    const member = [...own, 'send_self_destruct', 'upload_files', 'use_voice', 'use_tts', 'view_history', 'view_channel_members'];
     return [
       { key: 'member', emoji: '👤', level: 1, color: '#95a5a6', perms: member },
       { key: 'blank', emoji: '📄', level: 25, color: '#aaaaaa', perms: [] },

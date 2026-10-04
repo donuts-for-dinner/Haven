@@ -45,10 +45,12 @@ async switchChannel(code) {
   if (_burnDiv) _burnDiv.style.display = isDm ? 'inline-block' : 'none';
   this._burnArmed = false;
   // Self-destructing messages are for channels; DMs have burn-after-read.
+  // Only for people whose role lets them send one (send_self_destruct).
   const _sdBtn = document.getElementById('self-destruct-btn');
   const _sdDiv = document.getElementById('self-destruct-divider');
-  if (_sdBtn) _sdBtn.style.display = isDm ? 'none' : '';
-  if (_sdDiv) _sdDiv.style.display = isDm ? 'none' : '';
+  const _sdHidden = isDm || !this._hasPerm('send_self_destruct');
+  if (_sdBtn) _sdBtn.style.display = _sdHidden ? 'none' : '';
+  if (_sdDiv) _sdDiv.style.display = _sdHidden ? 'none' : '';
   this._setSelfDestructArmed(false);
   const displayCode = channel ? (channel.display_code || code) : code;
   const isMaskedCode = (displayCode === '••••••••');

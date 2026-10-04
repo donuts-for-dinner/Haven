@@ -319,7 +319,8 @@ test('emoji in a gradient name get their own span so they keep their colors (#57
   // A plain color name has no spans added.
   assert.strictEqual(app._roleNameHtml({ color: '#ff0000' }, 'Bob 🎉'), 'Bob 🎉');
   const css = require('./coreCss').readCoreCss();
-  assert.match(css, /\.role-gradient \.role-emoji \{[^}]*-webkit-text-fill-color: currentColor/);
+  // Colored only when Interface Icons is not Monochrome.
+  assert.match(css, /:root:not\(\[data-toolbaricons="mono"\]\) \.role-gradient \.role-emoji \{[^}]*-webkit-text-fill-color: currentColor/);
 });
 
 test('unsafe colors never reach the page', () => {

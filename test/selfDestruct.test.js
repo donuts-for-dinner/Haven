@@ -54,7 +54,8 @@ test.after(() => {
   test.mock.timers.reset();
   // Windows will not delete the folder while the database is open.
   db.close();
-  fs.rmSync(DATA, { recursive: true, force: true });
+  // Windows can hold the database's files a moment after closing; retry.
+  fs.rmSync(DATA, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 });
 
 test('destructAtFromSeconds accepts 1 second to 24 hours only', () => {

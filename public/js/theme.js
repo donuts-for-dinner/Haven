@@ -1475,16 +1475,6 @@ function _layoutPlugin(file) {
   return window.HavenPluginLoader?.loadedPlugins?.get(file)?.instance;
 }
 
-function _syncBraidToggle() {
-  const box = document.getElementById('braid-layout-toggle');
-  if (box) box.checked = document.documentElement.hasAttribute('data-braid-layout');
-}
-
-function _syncCompactToggle() {
-  const box = document.getElementById('compact-layout-toggle');
-  if (box) box.checked = document.documentElement.hasAttribute('data-compact-layout');
-}
-
 function _setLayoutPlugin(file, on, dataKey) {
   try {
     window.HavenApi?.Data?.save(dataKey, 'layoutOn', on ? '1' : '0');
@@ -1495,18 +1485,67 @@ function _setLayoutPlugin(file, on, dataKey) {
   else inst?._disengage?.();
 }
 
-function _setBraidLayout(on) {
-  if (on) _setLayoutPlugin('CompactLayout.plugin.js', false, 'CompactLayout');
-  _setLayoutPlugin('BraidLayout.plugin.js', on, 'BraidLayout');
-  _syncBraidToggle();
-  _syncCompactToggle();
+// ── Layout picker ──
+// Original is Haven's own layout. Every other choice is a layout plugin on
+// this server: a file named <Name>Layout.plugin.js whose instance has
+// _engage() and _disengage(), takes the shared layout with
+// HavenApi.Layout.acquire('<Name>Layout') and keeps its on/off under that
+// same name, as Braid and Compact do. Only one is on at a time, and a new
+// layout shows up here without any change to Haven itself.
+function _layoutPluginFiles() {
+  const loaded = window.HavenPluginLoader?.loadedPlugins;
+  if (!loaded) return [];
+  return [...loaded.entries()]
+    .filter(([file, p]) => /Layout\.plugin\.js$/.test(file) && !p.suppressed)
+    .map(([file, p]) => ({ file, key: file.replace('.plugin.js', ''), name: String(p.meta?.name || file).replace(/\s*layout$/i, '') }));
 }
 
-function _setCompactLayout(on) {
-  if (on) _setLayoutPlugin('BraidLayout.plugin.js', false, 'BraidLayout');
-  _setLayoutPlugin('CompactLayout.plugin.js', on, 'CompactLayout');
-  _syncBraidToggle();
-  _syncCompactToggle();
+// The layout the person picked: the one running now, or else an enabled
+// layout plugin that is switched on but waiting (Compact only runs in a
+// window at least 901px wide, Braid waits while Mod Mode edits).
+function _activeLayoutKey() {
+  const owner = document.documentElement.getAttribute('data-haven-layout-owner');
+  if (owner) return owner;
+  const loaded = window.HavenPluginLoader?.loadedPlugins;
+  for (const l of _layoutPluginFiles()) {
+    if (!loaded?.get(l.file)?.enabled) continue;
+    let on = '0';
+    try { on = window.HavenApi?.Data?.load(l.key, 'layoutOn', '1'); }
+    catch (err) { console.warn('[Theme] could not read the layout choice', err); }
+    if (on !== '0') return l.key;
+  }
+  return '';
+}
+
+function _setLayout(key) {
+  const layouts = _layoutPluginFiles();
+  for (const l of layouts) if (l.key !== key) _setLayoutPlugin(l.file, false, l.key);
+  const chosen = layouts.find(l => l.key === key);
+  if (chosen) _setLayoutPlugin(chosen.file, true, chosen.key);
+  _renderLayoutPicker();
+}
+
+function _renderLayoutPicker() {
+  const picker = document.getElementById('layout-picker');
+  if (!picker) return;
+  const active = _activeLayoutKey();
+  const original = picker.querySelector('[data-layout=""]');
+  picker.querySelectorAll('[data-layout]:not([data-layout=""])').forEach(b => b.remove());
+  for (const l of _layoutPluginFiles()) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'layout-opt';
+    btn.dataset.layout = l.key;
+    btn.setAttribute('role', 'radio');
+    btn.textContent = l.name;
+    picker.appendChild(btn);
+  }
+  picker.querySelectorAll('[data-layout]').forEach(b => {
+    const on = b.dataset.layout === active;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-checked', String(on));
+  });
+  if (original && !original.isConnected) picker.prepend(original);
 }
 
 function initEffectSelector() {
@@ -1517,22 +1556,21 @@ function initEffectSelector() {
   applyEffects(mode);
   _updateEffectButtons(container, mode);
 
-  const braidBox = document.getElementById('braid-layout-toggle');
-  if (braidBox && !braidBox.dataset.bound) {
-    braidBox.dataset.bound = '1';
-    braidBox.addEventListener('change', () => _setBraidLayout(braidBox.checked));
-    _syncBraidToggle();
-  }
-  const compactBox = document.getElementById('compact-layout-toggle');
-  if (compactBox && !compactBox.dataset.bound) {
-    compactBox.dataset.bound = '1';
-    compactBox.addEventListener('change', () => _setCompactLayout(compactBox.checked));
-    _syncCompactToggle();
+  const layoutPicker = document.getElementById('layout-picker');
+  if (layoutPicker && !layoutPicker.dataset.bound) {
+    layoutPicker.dataset.bound = '1';
+    layoutPicker.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-layout]');
+      if (btn) _setLayout(btn.dataset.layout);
+    });
+    _renderLayoutPicker();
   }
   if (!document.documentElement.dataset.layoutTogglesBound) {
     document.documentElement.dataset.layoutTogglesBound = '1';
-    document.addEventListener('haven:braid-layout', _syncBraidToggle);
-    document.addEventListener('haven:compact-layout', _syncCompactToggle);
+    // A layout switched some other way (Braid's Ctrl+Shift+B, its own menu,
+    // Mod Mode) and plugins finishing loading both update the picker.
+    document.addEventListener('haven:layout-owner-change', _renderLayoutPicker);
+    document.addEventListener('haven:plugins-loaded', _renderLayoutPicker);
   }
 
   container.querySelectorAll('.effect-btn').forEach(btn => {

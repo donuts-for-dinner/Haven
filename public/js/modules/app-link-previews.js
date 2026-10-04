@@ -233,6 +233,8 @@ _fetchLinkPreviews(containerEl) {
     // ── Inline YouTube embed (wrapped in the shared embed chrome) ──
     const ytVideoId = this._extractYouTubeVideoId(url);
     if (ytVideoId) {
+      // A link to a moment in the video starts the player there (#5728).
+      const ytStart = this._extractYouTubeStart(url);
       const msgContent = link.closest('.message-content, .thread-msg-content');
       if (!msgContent) return;
       if (msgContent.querySelector(`.link-preview[data-url="${CSS.escape(url)}"]`)) return;
@@ -251,7 +253,7 @@ _fetchLinkPreviews(containerEl) {
         // (scheme + host, no path and no query), which is enough for YouTube
         // and still keeps invite codes out of the referrer, since those live
         // in the query string. That was the whole reason for same-origin.
-        `<div class="lp-content"><div class="link-preview-yt"><iframe src="https://www.youtube.com/embed/${this._escapeHtml(ytVideoId)}?rel=0" width="100%" height="270" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div></div>`;
+        `<div class="lp-content"><div class="link-preview-yt"><iframe src="https://www.youtube.com/embed/${this._escapeHtml(ytVideoId)}?rel=0${ytStart ? `&start=${ytStart}` : ''}" width="100%" height="270" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div></div>`;
       this._wireEmbedControls(wrapper, url);
       this._applyEmbedSpoiler(wrapper, link);
       msgContent.appendChild(wrapper);
@@ -522,6 +524,19 @@ _extractYouTubeVideoId(url) {
     }
   } catch { /* not a valid address, so not a YouTube link */ }
   return null;
+},
+
+/** The moment a YouTube link points at, in whole seconds, or 0. Reads t= or
+ *  start= from the query or the #fragment, as 90, 90s, 1m30s or 1h2m3s. */
+_extractYouTubeStart(url) {
+  let u;
+  try { u = new URL(url); } catch { return 0; } // not a valid address: no start time
+  const hash = new URLSearchParams(u.hash.replace(/^#/, ''));
+  const raw = u.searchParams.get('t') || u.searchParams.get('start') || hash.get('t') || hash.get('start') || '';
+  const m = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/i.exec(raw.trim());
+  if (!raw || !m) return 0;
+  const secs = (+(m[1] || 0)) * 3600 + (+(m[2] || 0)) * 60 + (+(m[3] || 0));
+  return Number.isFinite(secs) && secs > 0 && secs < 86400 * 7 ? secs : 0;
 },
 
 };

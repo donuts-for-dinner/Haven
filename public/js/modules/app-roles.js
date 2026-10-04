@@ -1,7 +1,7 @@
 // Roles: the role editor (permissions, level, colours, members, channel
 // access) and per-channel roles.
 
-import { ALL_PERMS, ADMIN_ONLY_PERMS, PERM_LABELS } from './perm-catalog.js?v=4.17.4';
+import { ALL_PERMS, ADMIN_ONLY_PERMS, PERM_LABELS } from './perm-catalog.js?v=4.17.23';
 
 export default {
 

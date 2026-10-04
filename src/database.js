@@ -1394,6 +1394,27 @@ function initDatabase() {
   // ── Migration: encrypted server list for cross-device sync ──────────
   addColumn('users', 'encrypted_servers', "TEXT DEFAULT NULL");
 
+  // ── Migration: send_self_destruct (#5725) ──
+  // Self-destructing messages came out open to everyone. The permission that
+  // now controls them starts out on every role that may delete its own
+  // messages, once (marker key), so an admin who takes it away later keeps it
+  // away across restarts.
+  try {
+    const sdMarker = db.prepare("SELECT value FROM server_settings WHERE key = 'perm_send_self_destruct'").get();
+    if (!sdMarker) {
+      db.transaction(() => {
+        db.prepare(`
+          INSERT OR IGNORE INTO role_permissions (role_id, permission, allowed)
+          SELECT role_id, 'send_self_destruct', 1 FROM role_permissions
+          WHERE permission = 'delete_own_messages' AND allowed = 1
+        `).run();
+        db.prepare("INSERT OR REPLACE INTO server_settings (key, value) VALUES ('perm_send_self_destruct', '1')").run();
+      })();
+    }
+  } catch (err) {
+    console.error('Migration send_self_destruct failed:', err.message);
+  }
+
   // ── Migration: grant use_tts to all auto-assign roles (default ON) ──
   db.prepare(`
     INSERT OR IGNORE INTO role_permissions (role_id, permission, allowed)

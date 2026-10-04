@@ -11,6 +11,40 @@ Format follows [Keep a Changelog](https://keepachangelog.com/). Haven uses [Sema
 
 ---
 
+## [4.18.0] - 2026-10-04
+
+Self-destructing messages, plugin and theme updates from Settings, a light mode
+for the Custom and RGB themes, a Layout picker, and the setup wizard can
+restore a backup. Push to talk users in Haven Desktop now join voice muted.
+
+### Added
+- Self-destructing messages (#5725, thanks Bo0sted): turn on the flame next to the mic, send, and pick how long the message lives (30 seconds to 24 hours). The message and its attachments then delete themselves. Channels only; DMs keep burn after read. A new role permission, Send Self-Destructing Messages, decides who may send them: on upgrade every role that can delete its own messages gets it, so nothing changes until an admin takes it away. Pinning or protecting such a message keeps it, its attachments stay recoverable by an admin for the usual deleted-files window, it is not bridged to Discord through Ferry, and push notifications do not show its text.
+- Plugin and theme updates (#5588, thanks jkswoods): Settings, Admin, Extension Updates checks plugins and themes that name a GitHub repository for new releases, and installs or rolls back one after a warning. Nothing happens on its own, only fixed (immutable) releases are accepted, every file is checked against its checksum, and nothing is installed when the security blocklist cannot be checked.
+- Light mode for the Custom and RGB themes (#5726, thanks birdcrazy): a Light Mode switch in both editors gives a light background tinted with your color. Accent, link and warning colors are darkened enough to read on it, and button text switches between black and white for contrast. Dark Custom and RGB look exactly as before.
+- A Layout picker in the theme menu: Original (Haven's own layout), Braid, Compact, and any other layout plugin on the server, one at a time.
+- Setup wizard: Restore from a backup (#5713). The first page offers it next to Get Started. A backup made with Messages ticked brings back the accounts, channels, messages, settings and files, so there is no new admin to create first. Haven data already on the computer is kept beside it, and a bad or partial backup is refused before anything is touched.
+- Screen sharing: the bitrate is a setting (300 to 10,000 Kbps, or unlimited) that applies live, including through the voice relay (#5672, thanks bernardokcosta).
+- Outgoing proxy support for servers that can only reach the internet through a proxy (#5710, thanks Bo0sted). With no proxy set, nothing changes. See "Outgoing Proxy" in the guide.
+- Settings, Desktop App: a switch for hardware video encoding on Linux graphics cards Chromium blocks (VA-API), for Haven Desktop 1.5.0 and later. Off by default.
+- Brazilian Portuguese is fully translated (#5716, thanks bernardokcosta).
+
+### Changed
+- Invite links, and channel and message links, use the server's public address (an active tunnel, PUBLIC_URL, or the address a proxy forwards) instead of localhost when you open Haven on the server machine. When the server only knows a local address, the invite list says how to set one.
+- Emoji in gradient role names follow Settings, Interface Icons: in full color with Colorful Emoji, in the name's colors with Monochrome.
+- Screen sharing uses Chromium's own capture everywhere; the native GStreamer path is gone (#5672).
+- Sign-ups: the whitelist switch is labelled Whitelist instead of Enabled.
+- The guide explains how to update Haven under Podman (#5714).
+
+### Fixed
+- Push to talk (Haven Desktop): the mic was live from joining voice until the first press and release of the key. With a push to talk key set, you now join muted (Haven-Desktop #60).
+- Black screen share tiles with some GPU encoders (#5672).
+- Gradient role names drew emoji as flat colored shapes (#5720).
+- Your choice of visual effects was only saved in that browser or app, not to your account. It follows your account now.
+- YouTube previews start at the time in the link instead of the beginning (#5728).
+- Activities: the expand button sits next to the close button (#5718).
+- The close buttons on the mobile sidebars have their X centered (#5727, thanks birdcrazy).
+- Setup wizard: each step's label updates as it finishes.
+
 ## [4.17.0] - 2026-10-02
 
 Roles can have gradient colors, Ferry can bridge Discord forums, backup restore

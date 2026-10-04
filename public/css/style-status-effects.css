@@ -443,15 +443,27 @@
   margin-top: 0.5rem;
   padding-top: 0.375rem;
 }
-.braid-layout-toggle {
+/* Layout picker: Original plus one choice per layout plugin, one at a time. */
+.layout-picker {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   margin: 0.35rem 0 0.15rem;
-  font-size: 0.8rem;
+}
+.layout-opt {
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
+  font-size: 0.78rem;
   cursor: pointer;
+}
+.layout-opt:hover { border-color: var(--accent); }
+.layout-opt.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text, #fff);
 }
 
 .effect-selector {

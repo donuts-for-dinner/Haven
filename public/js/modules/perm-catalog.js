@@ -18,7 +18,7 @@ export const ALL_PERMS = [
   // (#5470) Hand out invite links without handing over the server. Holders
   // see and manage only the links they made.
   'create_channel', 'create_temp_channel', 'invite_users',
-  'upload_files', 'use_voice', 'use_tts', 'manage_webhooks', 'use_ferry', 'mention_everyone', 'view_history',
+  'upload_files', 'use_voice', 'use_tts', 'send_self_destruct', 'manage_webhooks', 'use_ferry', 'mention_everyone', 'view_history',
   'view_all_members', 'view_all_channels', 'view_channel_members', 'manage_emojis', 'manage_stickers', 'manage_soundboard', 'manage_music_queue', 'manage_tags', 'promote_user',
   'manage_roles', 'manage_server', 'delete_channel', 'read_only_override', 'view_audit_log', 'manage_display_names'
 ];
@@ -49,6 +49,7 @@ export const PERM_LABELS = {
   get upload_files() { return t('permissions.upload_files'); },
   get use_voice() { return t('permissions.use_voice'); },
   get use_tts() { return t('permissions.use_tts'); },
+  get send_self_destruct() { return t('permissions.send_self_destruct'); },
   get manage_webhooks() { return t('permissions.manage_webhooks'); },
   get use_ferry() { return t('permissions.use_ferry'); },
   get mention_everyone() { return t('permissions.mention_everyone'); },

@@ -774,6 +774,8 @@ window.HavenPluginLoader = (function () {
         HavenApi.UI.showToast(t('settings.plugins_section.reset_sync_pending'), 'warning');
       }
       console.log(`[Haven] Loaded ${loadedPlugins.size} plugin(s), ${loadedThemes.size} theme(s)${suppressExtensions ? ' (suppressed)' : ''}`);
+      // The theme popup's Layout picker lists layout plugins once they are in.
+      document.dispatchEvent(new CustomEvent('haven:plugins-loaded'));
     } catch (err) {
       console.warn('[Haven] Plugin/theme init error:', err);
     }

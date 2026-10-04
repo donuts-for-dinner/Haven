@@ -93,10 +93,12 @@
   -webkit-text-fill-color: transparent;
   color: transparent;
 }
-/* Emoji in a gradient name keep their own colors (#5720). A transparent fill
-   hides color emoji, so they need a visible one; the color only shows on a
-   glyph that has none of its own. */
-.role-gradient .role-emoji {
+/* Emoji in a gradient name keep their own colors (#5720), unless Interface
+   Icons is set to Monochrome: then they take the name's gradient like the
+   letters, so no full-color faces appear. A transparent fill hides color
+   emoji, so they need a visible one; the color only shows on a glyph that
+   has none of its own. */
+:root:not([data-toolbaricons="mono"]) .role-gradient .role-emoji {
   -webkit-text-fill-color: currentColor;
   color: var(--role-c1);
 }

@@ -324,6 +324,23 @@ Listen for `haven:layout-owner-change` to retry after that owner releases it.
 This prevents one plugin from recording another plugin's temporary DOM as the
 native restore position. `HavenApi.Layout.owner` exposes the current owner.
 
+### Appearing in the Layout picker
+
+The theme menu's **Layout** picker lists **Original** (Haven's own layout) and
+every layout plugin on the server, one at a time. A plugin shows up there when:
+
+- its file is named `<Name>Layout.plugin.js` (the picker shows its `@name`,
+  without a trailing "Layout");
+- its class has `_engage()` and `_disengage()`, which move and restore the
+  regions;
+- it acquires the layout under its file's base name, for example
+  `HavenApi.Layout.acquire('MyLayout')` for `MyLayout.plugin.js`;
+- it keeps its on/off as `HavenApi.Data.save('MyLayout', 'layoutOn', '1' | '0')`
+  and reads it back on `start()`, as Braid and Compact do.
+
+Picking another layout disengages the current one and saves `layoutOn = '0'`
+for it, so a plugin never has to know about the others.
+
 ## Stability policy
 
 For Theme API v1, Haven intends to keep these stable:

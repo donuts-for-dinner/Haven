@@ -1243,6 +1243,10 @@ module.exports = function register(socket, ctx) {
     // Self-destructing messages (src/selfDestruct.js). Channels only: DMs
     // have burn-after-read instead.
     const destructAt = channel.is_dm ? null : selfDestruct.destructAtFromSeconds(data.destructSeconds);
+    // Who may send them is a role permission (send_self_destruct).
+    if (destructAt && !socket.user.isAdmin && !userHasPermission(socket.user.id, 'send_self_destruct', channel.id)) {
+      return socket.emit('error-msg', 'You don\'t have permission to send self-destructing messages');
+    }
     // A message that deletes itself is its sender deleting it, so someone
     // denied delete_own_messages cannot send one. Refused rather than sent
     // as a normal message, which the sender did not ask for; fails closed.

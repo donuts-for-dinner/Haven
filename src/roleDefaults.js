@@ -4,7 +4,7 @@
 // Admin/host is users.is_admin, not a row in `roles`.
 
 const MEMBER_PERMS = [
-  'edit_own_messages', 'delete_own_messages', 'upload_files',
+  'edit_own_messages', 'delete_own_messages', 'send_self_destruct', 'upload_files',
   'use_voice', 'use_tts', 'view_history', 'view_channel_members',
 ];
 
@@ -25,7 +25,7 @@ const CHANNEL_MOD_PERMS = [
   'kick_user', 'mute_user', 'delete_message', 'pin_message',
   'manage_sub_channels', 'rename_sub_channel', 'delete_lower_messages',
   'upload_files', 'use_voice', 'view_history', 'view_channel_members', 'manage_music_queue',
-  'delete_own_messages', 'edit_own_messages',
+  'delete_own_messages', 'edit_own_messages', 'send_self_destruct',
 ];
 
 function seedDefaultRoles(db) {

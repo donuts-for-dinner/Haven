@@ -230,14 +230,9 @@
             <!-- Effect overlay picker (mashup) -->
             <div class="effect-overlay-section">
               <div class="theme-popup-title" style="margin-top: 2px;" data-i18n="app.theme.layout">Layout</div>
-              <label class="toggle-row braid-layout-toggle">
-                <span data-i18n="app.theme.braid_layout">Braid layout</span>
-                <input type="checkbox" id="braid-layout-toggle" data-bound="1">
-              </label>
-              <label class="toggle-row braid-layout-toggle">
-                <span data-i18n="app.theme.compact_layout">Compact layout</span>
-                <input type="checkbox" id="compact-layout-toggle" data-bound="1">
-              </label>
+              <div class="layout-picker" id="layout-picker" role="radiogroup" data-i18n-aria-label="app.theme.layout" aria-label="Layout">
+                <button type="button" class="layout-opt active" data-layout="" role="radio" aria-checked="true" data-i18n="app.theme.layout_original">Original</button>
+              </div>
               <div class="theme-popup-title" style="margin-top: 8px;" data-i18n="app.theme.effect_overlay">Effect Overlay</div>
               <div class="effect-selector" id="effect-selector">
                 <button class="effect-btn active" data-effect="auto" data-i18n-title="app.theme.match_theme" title="Match theme">⟳</button>
