@@ -467,9 +467,23 @@ module.exports = function register(socket, ctx) {
       } else if (current && current.public_key) {
         const existing = JSON.parse(current.public_key);
         keyChanged = existing.x !== publicJwk.x || existing.y !== publicJwk.y;
+        // force lets a client past the conflict check above, but it must not be
+        // enough on its own to install a different canonical key: every device
+        // reads this one to encrypt to this account, so replacing it with a key
+        // the server has never seen strands them all. Republishing the SAME
+        // key is fine under plain force (that is the conflict path re-aligning
+        // the published key with the backup blob the server already holds).
+        // Installing a DIFFERENT one is a rotation and needs rotating: true,
+        // which only a confirmed reset sends.
+        if (keyChanged && data.rotating !== true) {
+          console.warn(`[E2E] public key overwrite REFUSED for user ${socket.user.id} (${socket.user.username}); force without rotating flag — canonical key left intact`);
+          socket.emit('public-key-conflict', { existing, reason: 'rotation-not-declared' });
+          return;
+        }
       }
       db.prepare('UPDATE users SET public_key = ? WHERE id = ?')
         .run(JSON.stringify(publicJwk), socket.user.id);
+      console.log(`[E2E] public key ${keyChanged ? 'ROTATED' : 'republished'} for user ${socket.user.id} (${socket.user.username}); rotating=${data.rotating === true}`);
       socket.emit('public-key-published');
 
       if (keyChanged) {
@@ -512,6 +526,28 @@ module.exports = function register(socket, ctx) {
   });
 
   // ── E2E Encrypted Private Key Storage ───────────────────
+  //
+  // Overwrite protection. This write used to be unconditional, which meant a
+  // client that failed to unwrap the existing backup and fell into
+  // generate-new could destroy the only copy of the account's private key —
+  // the one other devices restore from — without anyone noticing.
+  //
+  // A differing backup is now refused unless the client says it is a
+  // deliberate rotation (`rotating: true`, set only from a confirmed reset).
+  // That distinction is the whole design: "I unwrapped nothing so I made a new
+  // key" and "the person asked to start over" are the same bytes on the wire,
+  // and only the client knows which one happened.
+  //
+  // Accepted / refused matrix:
+  //   no existing backup                  -> accepted (first enrolment)
+  //   identical encryptedKey + salt       -> accepted, no-op (re-store)
+  //   differing, rotating not set         -> REFUSED, 'encrypted-key-conflict'
+  //   differing, rotating: true           -> accepted (deliberate rotation)
+  //   differing, rotating not boolean     -> REFUSED (garbage flag is not consent)
+  //
+  // 'encrypted-key-conflict' is a distinct event, not error-msg, so the client
+  // can say "couldn't restore your existing key — I did not overwrite it"
+  // instead of a generic failure it cannot explain.
   socket.on('store-encrypted-key', (data) => {
     if (!data || typeof data !== 'object') return;
     const { encryptedKey, salt } = data;
@@ -522,6 +558,27 @@ module.exports = function register(socket, ctx) {
       return socket.emit('error-msg', 'Encrypted key data too large');
     }
     try {
+      const current = db.prepare(
+        'SELECT encrypted_private_key, e2e_key_salt FROM users WHERE id = ?'
+      ).get(socket.user.id);
+      const hasExisting = !!(current && current.encrypted_private_key && current.e2e_key_salt);
+      // rotating must be an explicit boolean. A truthy junk value is not consent
+      // to destroy a key, so anything but `true` means refuse.
+      const claimsRotation = data.rotating === true;
+      const isIdentical = hasExisting &&
+        current.encrypted_private_key === encryptedKey &&
+        current.e2e_key_salt === salt;
+
+      if (hasExisting && !isIdentical && !claimsRotation) {
+        console.warn(`[E2E] key backup overwrite REFUSED for user ${socket.user.id} (${socket.user.username}); no rotating flag, differing backup — existing blob left intact`);
+        return socket.emit('encrypted-key-conflict', {
+          reason: 'existing-backup-present',
+          updatedAt: db.prepare('SELECT key_backup_updated_at FROM users WHERE id = ?').get(socket.user.id)?.key_backup_updated_at || null,
+        });
+      }
+      const outcome = hasExisting
+        ? (isIdentical ? 'accepted-noop' : 'accepted-rotation')
+        : 'accepted-first';
       // separatePassphrase says what this backup is locked with, when the
       // client is switching between its login password and a passphrase of
       // its own; the two are saved together so they never disagree.
@@ -535,10 +592,11 @@ module.exports = function register(socket, ctx) {
                       key_backup_updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
           .run(encryptedKey, salt, socket.user.id);
       }
-      // Logged because this write is unconditional: any device can replace the
-      // backup another device relies on, and nothing else on the server records
-      // that it happened. The user id plus the timestamp is the only trace.
-      console.log(`[E2E] key backup stored for user ${socket.user.id} (${socket.user.username}); separatePassphrase=${socket.user.e2ePassphrase === true}`);
+      // Every attempt is logged with its outcome: this write can replace the
+      // backup another device depends on, so the record of what happened and
+      // why is the only thing standing between a silent loss and a diagnosable
+      // one. key_backup_updated_at records when, this line records what.
+      console.log(`[E2E] key backup ${outcome} for user ${socket.user.id} (${socket.user.username}); separatePassphrase=${socket.user.e2ePassphrase === true}`);
       socket.emit('encrypted-key-stored');
     } catch (err) {
       console.error('Store encrypted key error:', err);
