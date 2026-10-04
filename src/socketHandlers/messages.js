@@ -2254,13 +2254,19 @@ module.exports = function register(socket, ctx) {
     if (!data || typeof data !== 'object') return;
     if (!isInt(data.messageId)) return;
 
-    const archCode = socket.currentChannel;
+    // Same explicit-channel resolution as pin-message (:2160) and unpin-message
+    // (:2217): honour a client-supplied channelCode, validated as 8 hex chars,
+    // falling back to socket.currentChannel. Without it a floating panel (the DM
+    // PiP) archives against whatever channel the main pane happens to be on,
+    // and the permission check is evaluated against the wrong channel too.
+    const rawArchCode = typeof data.channelCode === 'string' ? data.channelCode.trim() : null;
+    const archCode = (rawArchCode && /^[a-f0-9]{8}$/i.test(rawArchCode)) ? rawArchCode : socket.currentChannel;
     const archCh = archCode ? db.prepare('SELECT id FROM channels WHERE code = ?').get(archCode) : null;
     if (!socket.user.isAdmin && !userHasPermission(socket.user.id, 'archive_messages', archCh ? archCh.id : null)) {
       return socket.emit('error-msg', 'You don\'t have permission to archive messages');
     }
 
-    const code = socket.currentChannel;
+    const code = archCode;
     if (!code) return;
 
     const channel = db.prepare('SELECT id FROM channels WHERE code = ?').get(code);
@@ -2291,13 +2297,15 @@ module.exports = function register(socket, ctx) {
     if (!data || typeof data !== 'object') return;
     if (!isInt(data.messageId)) return;
 
-    const unarchCode = socket.currentChannel;
+    // Same explicit-channel resolution as archive-message above.
+    const rawUnarchCode = typeof data.channelCode === 'string' ? data.channelCode.trim() : null;
+    const unarchCode = (rawUnarchCode && /^[a-f0-9]{8}$/i.test(rawUnarchCode)) ? rawUnarchCode : socket.currentChannel;
     const unarchCh = unarchCode ? db.prepare('SELECT id FROM channels WHERE code = ?').get(unarchCode) : null;
     if (!socket.user.isAdmin && !userHasPermission(socket.user.id, 'archive_messages', unarchCh ? unarchCh.id : null)) {
       return socket.emit('error-msg', 'You don\'t have permission to unarchive messages');
     }
 
-    const code = socket.currentChannel;
+    const code = unarchCode;
     if (!code) return;
 
     const channel = db.prepare('SELECT id FROM channels WHERE code = ?').get(code);
