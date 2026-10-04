@@ -1,0 +1,26 @@
+# Haven repo policy — 2026-10-04, from Trent. Permanent.
+#
+# origin   = donuts-for-dinner/Haven  — OUR fork. The primary repo. Where our
+#           work lives. Push freely.
+# upstream = ancsemi/Haven — a STRANGER's repo. Trent is not ancsemi, has no
+#           account there, and has no relationship with them. Read-only
+#           reference. Push is hard-disabled at the URL.
+#
+# DO NOT auto-merge or auto-pull upstream. If upstream drifts, REPORT the drift
+# to Kairo (release scope, what changed, what we'd gain) and WAIT for Trent's
+# decision. Security fixes from upstream are worth surfacing IMMEDIATELY — the
+# merge decision is still Trent's, not ours.
+#
+# If upstream ever breaks something in our fork, report it; don't chase it.
+#
+# Production runs OUR commits. The 4.18.0 merge (a2f2723) is grandfathered —
+# already merged, verified, tests intact, running fine. Do not repeat that
+# pattern without direction.
+#
+# If Haven needs a fix, the fix comes from us as a commit to the fork, not from
+# waiting on upstream.
+
+echo "REMOTE POLICY: upstream=ancsemi/Haven is READ-ONLY (a stranger's repo)."
+echo "  Fetch to survey drift:  git fetch upstream"
+echo "  Then REPORT to Kairo and WAIT. Do not merge, rebase, or fast-forward."
+echo "  origin=donuts-for-dinner/Haven is ours; 'git push' is correct and safe."
