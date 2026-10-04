@@ -526,13 +526,19 @@ module.exports = function register(socket, ctx) {
       // client is switching between its login password and a passphrase of
       // its own; the two are saved together so they never disagree.
       if (typeof data.separatePassphrase === 'boolean') {
-        db.prepare('UPDATE users SET encrypted_private_key = ?, e2e_key_salt = ?, e2e_passphrase = ? WHERE id = ?')
+        db.prepare(`UPDATE users SET encrypted_private_key = ?, e2e_key_salt = ?, e2e_passphrase = ?,
+                      key_backup_updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
           .run(encryptedKey, salt, data.separatePassphrase ? 1 : 0, socket.user.id);
         socket.user.e2ePassphrase = data.separatePassphrase;
       } else {
-        db.prepare('UPDATE users SET encrypted_private_key = ?, e2e_key_salt = ? WHERE id = ?')
+        db.prepare(`UPDATE users SET encrypted_private_key = ?, e2e_key_salt = ?,
+                      key_backup_updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
           .run(encryptedKey, salt, socket.user.id);
       }
+      // Logged because this write is unconditional: any device can replace the
+      // backup another device relies on, and nothing else on the server records
+      // that it happened. The user id plus the timestamp is the only trace.
+      console.log(`[E2E] key backup stored for user ${socket.user.id} (${socket.user.username}); separatePassphrase=${socket.user.e2ePassphrase === true}`);
       socket.emit('encrypted-key-stored');
     } catch (err) {
       console.error('Store encrypted key error:', err);

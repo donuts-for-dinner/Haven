@@ -1172,6 +1172,14 @@ function initDatabase() {
   // the key from the password.
   addColumn('users', 'e2e_passphrase', "INTEGER DEFAULT 0");
 
+  // ── Migration: when was the private-key backup last written? ──
+  // store-encrypted-key overwrites the backup unconditionally, so without a
+  // timestamp there is no way to tell a fresh backup from one a second device
+  // clobbered hours ago. That made the HavenMac "couldn't decrypt" case
+  // impossible to diagnose from the server side. DATETIME (SQLite, UTC) to
+  // match every other timestamp column in this schema.
+  addColumn('users', 'key_backup_updated_at', "DATETIME DEFAULT NULL");
+
   // ── Migration: OIDC / SSO federated identity (#12) ──
   // A federated account is identified by the pair (issuer, subject), never by
   // email — an email can be reassigned inside a directory, `sub` cannot.
